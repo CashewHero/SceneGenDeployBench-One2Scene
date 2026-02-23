@@ -1,0 +1,17 @@
+lightning
+black
+ruff
+jaxtyping
+beartype
+wandb
+colorspacious
+moviepy==1.0.3
+git+https://github.com/rmurai0610/diff-gaussian-rasterization-w-pose.git
+dacite
+lpips
+e3nn
+svg.py
+scikit-video
+einops
+roma
+hydra-core==1.3.2

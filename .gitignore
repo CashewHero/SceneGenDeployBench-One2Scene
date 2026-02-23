@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment
+.env
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude pretrained weights and outputs
+pretrained_weights/
+outputs/
+demo_outputs/
+
+# Model checkpoints
+*.ckpt
+*.pth
+*.pt
+
+# Data
+data/
+*.zip
+*.tar.gz
+
+# Temporary files
+*.log
+*.tmp

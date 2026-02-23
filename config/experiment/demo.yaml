@@ -1,0 +1,48 @@
+# @package _global_
+
+defaults:
+  - /dataset@_group_.re10k: demo
+  - override /model/encoder: fastsplat
+  - override /model/encoder/backbone: fast3r
+  # - override /model/encoder: noposplat
+  # - override /model/encoder/backbone: croco
+  - override /loss: [mse, lpips]
+
+wandb:
+  name: re10k
+  tags: [re10k, 256x256]
+  # tags: [re10k, 512x512]
+
+
+model:
+  encoder:
+    gs_params_head_type: dpt_gs
+    pose_free: false
+    intrinsics_embed_loc: encoder
+    intrinsics_embed_type: token
+    pretrained_weights: "/home/pengfei_wang/NoPoSplat/pretrained_weights/model.pt"
+  decoder:
+    make_scale_invariant: true
+
+dataset:
+  re10k:
+    roots: [./demo_outputs]
+    view_sampler:
+      warm_up_steps: 1250
+
+optimizer:
+  lr: 2e-4
+  warm_up_steps: 2000
+  backbone_lr_multiplier: 0.1
+
+data_loader:
+  train:
+    batch_size: 1
+
+trainer:
+  max_steps: 50_001
+  val_check_interval: 100
+
+checkpointing:
+  every_n_train_steps: 5000
+  save_top_k: -1
