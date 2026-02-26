@@ -49,21 +49,21 @@
 
 <table>
 <tr>
-<td align="center" width="33%">
+<td align="center" width="20%">
 <b>Public Space</b><br>
 <i>Photorealistic Style</i><br><br>
 
 <video src="https://github.com/user-attachments/assets/9b62b544-7a9f-46b9-a145-141f7d2bbec2" width="280" controls></video>
 
 </td>
-<td align="center" width="33%">
+<td align="center" width="20%">
 <b>Creative Workspace</b><br>
 <i>Photorealistic Style</i><br><br>
 
 <video src="https://github.com/user-attachments/assets/57b7c733-6d4f-4090-b854-f9695a6a240a" width="280" controls></video>
 
 </td>
-<td align="center" width="33%">
+<td align="center" width="20%">
 <b>Modern Living Space</b><br>
 <i>Photorealistic Style</i><br><br>
 
