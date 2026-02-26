@@ -31,6 +31,12 @@
 
 
 
+https://github.com/user-attachments/assets/c6427e8f-6797-443a-9011-56b9422d598a
+
+
+
+
+
 
 ## 🔥 News
 - February 26, 2026: 🤗 We release the open-source code and model of One2Scene!
@@ -50,7 +56,7 @@
 <table align="center" style="border: none;">
 <tr>
 <td align="center" style="border: none; padding: 5px;">
-<video src="https://github.com/user-attachments/assets/9b62b544-7a9f-46b9-a145-141f7d2bbec2" width="280" controls></video>
+<video src="https://github.com/user-attachments/assets/c6427e8f-6797-443a-9011-56b9422d598a" width="280" controls></video>
 </td>
 <td align="center" style="border: none; padding: 5px;">
 <video src="https://github.com/user-attachments/assets/57b7c733-6d4f-4090-b854-f9695a6a240a" width="280" controls></video>
