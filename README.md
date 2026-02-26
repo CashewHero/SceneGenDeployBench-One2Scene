@@ -75,7 +75,9 @@
 
 ## 🌍 **One2scene**
 
-### Abstract
+<h3 align="center">Abstract</h3>
+
+<div style="text-align: justify">
 Generating explorable 3D scenes from a single image is a highly challenging problem in 3D vision. Existing
 methods struggle to support free exploration, often producing severe geometric distortions and noisy artifacts
 when the viewpoint moves far from the original perspective. We introduce <b>One2Scene</b>, an effective
@@ -91,7 +93,7 @@ at arbitrary cameras. By explicitly constructing and conditioning on a 3D-consis
 stably under large camera motions, facilitating immersive scene exploration. Extensive experiments show that
 One2Scene substantially outperforms state-of-the-art methods in panorama depth estimation, feed-forward 360°
 reconstruction, and explorable 3D scene generation.
-
+</div>
 
 
 ## 🤗 Get Started with One2Scene
