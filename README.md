@@ -78,21 +78,7 @@
 <h3 align="center">Abstract</h3>
 
 <div style="text-align: justify">
-Generating explorable 3D scenes from a single image is a highly challenging problem in 3D vision. Existing
-methods struggle to support free exploration, often producing severe geometric distortions and noisy artifacts
-when the viewpoint moves far from the original perspective. We introduce <b>One2Scene</b>, an effective
-framework that decomposes this ill-posed problem into three tractable subtasks to enable immersive explorable
-scene generation. We first use a panorama generator to produce anchor views from a single input image as
-initialization. Then, we lift these 2D anchors into an explicit 3D geometric scaffold via a generalizable,
-feed-forward Gaussian Splatting network. Rather than directly reconstructing from the panorama, we reformulate
-the task as multi-view stereo matching across sparse anchors, which allows us to leverage robust geometric
-priors learned from large-scale multi-view data. A bidirectional feature fusion module is used to enforce
-cross-view consistency, yielding an efficient and geometrically reliable scaffold. Finally, the scaffold serves
-as a strong prior for a novel view generator that can produce photorealistic and geometrically accurate views
-at arbitrary cameras. By explicitly constructing and conditioning on a 3D-consistent scaffold, One2Scene works
-stably under large camera motions, facilitating immersive scene exploration. Extensive experiments show that
-One2Scene substantially outperforms state-of-the-art methods in panorama depth estimation, feed-forward 360°
-reconstruction, and explorable 3D scene generation.
+Generating explorable 3D scenes from a single image is a highly challenging problem in 3D vision. Existing methods struggle to support free exploration, often producing severe geometric distortions and noisy artifacts when the viewpoint moves far from the original perspective. We introduce <b>One2Scene</b>, an effective framework that decomposes this ill-posed problem into three tractable subtasks to enable immersive explorable scene generation. We first use a panorama generator to produce anchor views from a single input image as initialization. Then, we lift these 2D anchors into an explicit 3D geometric scaffold via a generalizable, feed-forward Gaussian Splatting network. Rather than directly reconstructing from the panorama, we reformulate the task as multi-view stereo matching across sparse anchors, which allows us to leverage robust geometric priors learned from large-scale multi-view data. A bidirectional feature fusion module is used to enforce cross-view consistency, yielding an efficient and geometrically reliable scaffold. Finally, the scaffold serves as a strong prior for a novel view generator that can produce photorealistic and geometrically accurate views at arbitrary cameras. By explicitly constructing and conditioning on a 3D-consistent scaffold, One2Scene works stably under large camera motions, facilitating immersive scene exploration. Extensive experiments show that One2Scene substantially outperforms state-of-the-art methods in panorama depth estimation, feed-forward 360° reconstruction, and explorable 3D scene generation.
 </div>
 
 
