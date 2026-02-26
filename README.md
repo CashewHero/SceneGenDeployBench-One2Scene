@@ -31,11 +31,6 @@
 
 
 
-https://github.com/user-attachments/assets/c6427e8f-6797-443a-9011-56b9422d598a
-
-
-
-
 
 
 ## 🔥 News
