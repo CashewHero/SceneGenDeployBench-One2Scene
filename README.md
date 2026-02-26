@@ -48,7 +48,7 @@
 </div>
 
 <p align="center">
-<video src="https://github.com/user-attachments/assets/9b62b544-7a9f-46b9-a145-141f7d2bbec2" width="20%" controls></video> <video src="https://github.com/user-attachments/assets/57b7c733-6d4f-4090-b854-f9695a6a240a" width="20%" controls></video> <video src="https://github.com/user-attachments/assets/ccbc7bd4-9f65-4ca4-831c-ce5a9c5255ef" width="20%" controls></video>
+<video src="https://github.com/user-attachments/assets/9b62b544-7a9f-46b9-a145-141f7d2bbec2" width="32%" controls></video> <video src="https://github.com/user-attachments/assets/57b7c733-6d4f-4090-b854-f9695a6a240a" width="32%" controls></video> <video src="https://github.com/user-attachments/assets/ccbc7bd4-9f65-4ca4-831c-ce5a9c5255ef" width="32%" controls></video>
 </p>
 
 <div align="center">
@@ -59,7 +59,6 @@
 *method comparisons, and interactive 3D point cloud visualizations*
 
 </div>
-
 ## 🌍 **One2scene**
 
 ### Abstract
