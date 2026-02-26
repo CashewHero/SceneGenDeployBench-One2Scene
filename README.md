@@ -1,27 +1,32 @@
 <p align="center">
-  <h2 align="center"> 🌍 One2Scene <br> Geometric Consistent Explorable 3D Scene Generation from a Single Image</h2>
- <p align="center">
-    <a href="https://scholar.google.com/citations?user=zAAYwRYAAAAJ&hl=en">Pengfei Wang* </a>
-    ·
-    <a href="https://scholar.google.com/citations?user=nMev-10AAAAJ&hl=en">Liyi Chen*</a>
-    ·
-    <a href="https://scholar.google.com/citations?user=F15mLDYAAAAJ&hl=en">Zhiyuan Ma</a>
-    ·
-    <a href="https://openreview.net/profile?id=~Yanjun_Guo1">Yanjun Guo</a>
-    ·
-    <a href="https://scholar.google.com/citations?user=DxcLKZIAAAAJ&hl=en">Guowen Zhang</a>
-    ·
-    <a href="https://scholar.google.com/citations?user=tAK5l1IAAAAJ&hl=en">Lei Zhang†</a>
-  
-    <p align="center">
- <strong>ICLR 2026
-   
-  <h3 align="center"><a href="https://arxiv.org/abs/2602.19766">Paper</a> | <a href="https://one2scene5406.github.io/">Project Page</a> </h3>
-  <div align="center"></div>
+  <h2 align="center">🌍 One2Scene <br> Geometric Consistent Explorable 3D Scene Generation from a Single Image</h2>
 </p>
+
+<p align="center">
+  <a href="https://scholar.google.com/citations?user=zAAYwRYAAAAJ&hl=en">Pengfei Wang*</a>
+  ·
+  <a href="https://scholar.google.com/citations?user=nMev-10AAAAJ&hl=en">Liyi Chen*</a>
+  ·
+  <a href="https://scholar.google.com/citations?user=F15mLDYAAAAJ&hl=en">Zhiyuan Ma</a>
+  ·
+  <a href="https://openreview.net/profile?id=~Yanjun_Guo1">Yanjun Guo</a>
+  ·
+  <a href="https://scholar.google.com/citations?user=DxcLKZIAAAAJ&hl=en">Guowen Zhang</a>
+  ·
+  <a href="https://scholar.google.com/citations?user=tAK5l1IAAAAJ&hl=en">Lei Zhang†</a>
+</p>
+
+<p align="center">
+  <strong>ICLR 2026</strong>
+</p>
+
+<p align="center">
+  <a href="https://arxiv.org/abs/2602.19766">Paper</a> | <a href="https://one2scene5406.github.io/">Project Page</a>
+</p>
+
 <p align="center">
   <a href="">
-    <img src="assets/pipeline.png" alt="Teaser" width="85%">
+    <img src="assets/pipeline.png" alt="Teaser" width="90%">
   </a>
 </p>
 
