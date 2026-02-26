@@ -13,11 +13,9 @@
     ·
     <a href="https://scholar.google.com/citations?user=tAK5l1IAAAAJ&hl=en">Lei Zhang†</a>
   
-  </p>
-
     <p align="center">
-<strong>ICLR 2026
-</p>
+ <strong>ICLR 2026
+   
   <h3 align="center"><a href="https://arxiv.org/abs/2602.19766">Paper</a> | <a href="https://one2scene5406.github.io/">Project Page</a> </h3>
   <div align="center"></div>
 </p>
