@@ -156,7 +156,7 @@ cd ..
 You can use the following code:
 ```python
 # Step 1: generate a Panorama image with An Image via HunyuanWorld 1.0.
-python3 third_party/HunyuanWorld-1.0/demo_panogen.py --prompt "" --image_path third_party/HunyuanWorld-1.0/examples/case2/input.png --output_path ./demo_outputs
+python3 third_party/HunyuanWorld-1.0/demo_panogen.py --prompt "" --image_path ./demo_case/case.png --output_path ./demo_outputs
 ```
 After execution, you can find the generated panorama image at ./demo_outputs/panorama.png.
 
