@@ -129,13 +129,27 @@ make
 sudo make install
 ```
 
-### Step 1: Install One2Scene Dependencies
+### Step 2: Install One2Scene Dependencies
 ```bash
 cd ../../../..
 pip install -r requirements.txt
 
 # login your own hugging face account
 huggingface-cli login --token $HUGGINGFACE_TOKEN
+```
+
+### Download Pretrained Models
+Download the pretrained model checkpoints from [HuggingFace](https://huggingface.co/datasets/mutou0308/One2Scene) into the `models/` directory:
+```bash
+mkdir -p models
+# Scaffold model (~1.9GB)
+huggingface-cli download mutou0308/One2Scene one2scene_scaffold.ckpt --repo-type dataset --local-dir models
+# Denoise model (~19GB)
+huggingface-cli download mutou0308/One2Scene one2scene_denoise.ckpt --repo-type dataset --local-dir models
+# SDXL-VAE (required by the denoising model)
+cd src_denoise
+git clone https://huggingface.co/stabilityai/sdxl-vae sdxl-vae
+cd ..
 ```
 
 ### Code Usage
@@ -153,7 +167,7 @@ After execution, you can find the generated panorama image at ./demo_outputs/pan
 CUDA_VISIBLE_DEVICES=0 python main.py \
   +experiment=demo \
   mode=test \
-  checkpointing.load=/home/pengfei_wang/NoPoSplat/outputs/exp_cube_mvsplat/2025-05-13_23-42-25/checkpoints/epoch_0-step_20000.ckpt
+  checkpointing.load=models/one2scene_scaffold.ckpt
 ```
 You can modify the custom camera trajectory in src/dataset/dataset_demo.py at line 324.
 
@@ -175,7 +189,7 @@ torchrun \
     --no_date \
     --train=False \
     --debug \
-    --resume=seva_denoise_v13
+    --resume=../models/one2scene_denoise.ckpt
 
 # And then you get a complete SCENE!!
 ```

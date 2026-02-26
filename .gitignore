@@ -38,6 +38,15 @@ data/
 *.zip
 *.tar.gz
 
+# Wandb logs and training images
+**/wandb/
+
+# SDXL-VAE (user clones separately)
+**/sdxl-vae/
+
+# Large npy files
+local_pre/*.npy
+
 # Temporary files
 *.log
 *.tmp
