@@ -937,16 +937,22 @@ if __name__ == "__main__":
 
         # dataset (override the rank_id)
         config.data.params.rank_id = int(os.environ.get('RANK', 0))
-        dataset = instantiate_from_config(config.data)
-        
-        # 创建dataloader - Lightning会自动处理分布式
-        dataloader = DataLoader(dataset, batch_size=bs, shuffle=True, num_workers=num_workers)
-        print("#### DataLoader #####")
-        print(f"Dataset size: {len(dataset)}")
-        print(f"DataLoader size: {len(dataloader)}")
-        
+        Bdataset = None
+        dataloader = None
+        # Only instantiate training dataset when training is enabled.
+        # This avoids requiring training data paths during inference (--train=False).
+        if opt.train:
+            dataset = instantiate_from_config(config.data)
+
+            # 创建dataloader - Lightning会自动处理分布式
+            dataloader = DataLoader(dataset, batch_size=bs, shuffle=True, num_workers=num_workers)
+            print("#### DataLoader #####")
+            print(f"Dataset size: {len(dataset)}")
+            print(f"DataLoader size: {len(dataloader)}")
+
+        # always instantiate test dataset (needed for inference/evaluation)
         test_dataset = instantiate_from_config(config.test_data)
-    
+
         test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0)
     
         if not cpu:

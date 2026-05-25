@@ -87,7 +87,7 @@ class SevaEngine(pl.LightningModule):
         compile_model: bool = False,
         en_and_decode_n_samples_a_time: Optional[int] = None,
         test_data_config: Union[None, Dict, ListConfig, OmegaConf] = None,
-        save_dir: str = "/home/pengfei_wang/One2Scene/demo_outputs/render_denoise",
+        save_dir: str = "../demo_outputs/render_denoise",
     ):
         super().__init__()
 

@@ -27,7 +27,7 @@ model:
   target: seva.model_engine_denoise_mostclosecamera.SevaEngine
   params:
     ucg_rate: 0.0
-    save_dir: "/home/pengfei_wang/One2Scene/demo_outputs/render_denoise"
+    save_dir: "../demo_outputs/render_denoise"
     
     disable_first_stage_autocast: False
     log_keys:
@@ -170,7 +170,8 @@ data:
   target: seva.seva_dataset_denoise_train.SEVADataset_DenoiseOnline
   params:
     VERSION_DICT: ${VERSION_DICT}
-    datafolder: '/dfs/dataset/mvsplat360_noisyimg960p'
+    # Example: datafolder: /path/to/mvsplat360_noisyimg960p
+    datafolder: 'PATH_TO_TRAIN_DATA'
     max_cond_views: 1
     min_cond_views: 1
     num_cond_noisy_view: 8
@@ -199,7 +200,8 @@ test_data:
     # datafolder: "/data/liyi_chen/code/generative-models-denoise/pengfei_data/anysplat_panorama_0918"
     # datafolder: "/data/liyi_chen/code/generative-models-denoise/pengfei_data/hunyuan_test_select_indoor_photo"
     # datafolder: "/data/liyi_chen/code/generative-models-denoise/pengfei_data/inter"
-    datafolder: "/home/pengfei_wang/One2Scene/demo_outputs/render/data.pth"
+    # Use a relative path so repo is portable. This points to demo outputs produced by scaffold stage.
+    datafolder: "../demo_outputs/render/data.pth"
     max_cond_views: 5
     min_cond_views: 5
 
