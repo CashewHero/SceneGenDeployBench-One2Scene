@@ -21,6 +21,8 @@ MODEL_REVISION = "46367f7dc0aecfc93fb3e104ebd5994ec5731b33"
 CHECKPOINT_NAME = "one2scene_scaffold.ckpt"
 CHECKPOINT_SIZE = 2_003_484_732
 CHECKPOINT_SHA256 = "f833ca03e84f30e21ebbbd374b9903af22bcfa73b6523581cf77af3f984c6c05"
+DEFAULT_CUBE_SIZE = 512
+SUPPORTED_CUBE_SIZES = (256, 512)
 OUTPUT_METADATA = {
     # One2Scene's primary cube face uses camera axes X right, Y down, Z forward.
     # The scale remains provisional until the TartanAir calibration run is complete.
@@ -37,12 +39,17 @@ def utc(timestamp: float) -> str:
 
 def parameters(raw: object) -> dict[str, Any]:
     if raw is None:
-        return {}
+        raw = {}
     if not isinstance(raw, dict):
         raise ValueError("job.parameters must be an object")
-    if raw:
-        raise ValueError(f"unknown job parameters: {', '.join(sorted(map(str, raw)))}")
-    return {}
+    unknown = set(raw) - {"cube_size"}
+    if unknown:
+        raise ValueError(f"unknown job parameters: {', '.join(sorted(map(str, unknown)))}")
+    cube_size = raw.get("cube_size", DEFAULT_CUBE_SIZE)
+    if type(cube_size) is not int or cube_size not in SUPPORTED_CUBE_SIZES:
+        choices = ", ".join(map(str, SUPPORTED_CUBE_SIZES))
+        raise ValueError(f"job.parameters.cube_size must be one of: {choices}")
+    return {"cube_size": cube_size}
 
 
 def variant_key(params: dict[str, Any]) -> str:
@@ -237,7 +244,7 @@ def run_job(request: dict[str, Any]) -> dict[str, Any]:
             stage = "model_inference"
             from runner_wrapper.one2scene_model import run_scaffold
 
-            splats = run_scaffold(prepared, checkpoint)
+            splats = run_scaffold(prepared, checkpoint, cube_size=params["cube_size"])
 
             stage = "export"
             from runner_wrapper.graphdeco import write_graphdeco_ply
@@ -262,6 +269,14 @@ def run_job(request: dict[str, Any]) -> dict[str, Any]:
                     "value": sh_degree,
                     "unit": "degree",
                     "source": "model",
+                },
+                {
+                    "namespace": "model",
+                    "name": "cube_face_resolution",
+                    "type": "integer",
+                    "value": params["cube_size"],
+                    "unit": "pixels",
+                    "source": "runner",
                 },
                 {
                     "namespace": "model",

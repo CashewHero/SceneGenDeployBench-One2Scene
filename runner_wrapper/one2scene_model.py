@@ -8,7 +8,7 @@ from types import ModuleType
 from typing import Any
 
 
-CUBE_SIZE = 256
+DEFAULT_CUBE_SIZE = 512
 CUBE_FACE_COUNT = 6
 
 
@@ -83,7 +83,7 @@ def _sample_equirectangular(image: Any, xyz: Any) -> Any:
     return result
 
 
-def panorama_to_cube_faces(image_path: Path, size: int = CUBE_SIZE) -> Any:
+def panorama_to_cube_faces(image_path: Path, size: int = DEFAULT_CUBE_SIZE) -> Any:
     import numpy as np
     from PIL import Image
 
@@ -176,15 +176,15 @@ def _use_turing_attention_fallback(encoder: Any, capability: tuple[int, int]) ->
             module.attn_implementation = "pytorch_naive"
 
 
-def _context(image_path: Path, device: Any) -> dict[str, Any]:
+def _context(image_path: Path, device: Any, cube_size: int) -> dict[str, Any]:
     import numpy as np
     import torch
 
-    faces = panorama_to_cube_faces(image_path)
+    faces = panorama_to_cube_faces(image_path, size=cube_size)
     images = torch.from_numpy(faces).permute(0, 3, 1, 2).contiguous()
     images = (images - 0.5) / 0.5
     angles = [(0, 0), (90, 0), (180, 0), (270, 0), (-90, 90), (-90, -90)]
-    cameras = [_camera(95.0, theta, phi, CUBE_SIZE) for theta, phi in angles]
+    cameras = [_camera(95.0, theta, phi, cube_size) for theta, phi in angles]
     intrinsics = torch.from_numpy(np.stack([camera[0] for camera in cameras]))
     extrinsics = torch.from_numpy(np.stack([camera[1] for camera in cameras]))
     return {
@@ -245,7 +245,11 @@ def _world_harmonics(local_harmonics: Any, extrinsics: Any) -> Any:
     return torch.cat(rotated, dim=0)
 
 
-def run_scaffold(image_path: Path, checkpoint_path: Path) -> dict[str, Any]:
+def run_scaffold(
+    image_path: Path,
+    checkpoint_path: Path,
+    cube_size: int = DEFAULT_CUBE_SIZE,
+) -> dict[str, Any]:
     import torch
 
     if not torch.cuda.is_available():
@@ -254,7 +258,7 @@ def run_scaffold(image_path: Path, checkpoint_path: Path) -> dict[str, Any]:
     if capability < (7, 5):
         raise RuntimeError("One2Scene scaffold requires CUDA compute capability 7.5 or newer")
     device = torch.device("cuda:0")
-    context = _context(image_path, device)
+    context = _context(image_path, device, cube_size)
     encoder = _load_encoder(checkpoint_path, device)
     _use_turing_attention_fallback(encoder, capability)
     visualization: dict[str, Any] = {}

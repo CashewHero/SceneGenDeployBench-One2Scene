@@ -12,7 +12,9 @@
     "source_job_id": null,
     "attempt": 1,
     "timeout_seconds": 3600,
-    "parameters": {}
+    "parameters": {
+      "cube_size": 512
+    }
   },
   "inputs": {
     "data": {
@@ -22,6 +24,6 @@
     }
   },
   "runtime": {
-    "output_dir": "/data/output/one2scene-scaffold@0.1.0/smoke/panorama-1"
+    "output_dir": "/data/output/one2scene-scaffold@0.1.1/smoke/panorama-1"
   }
 }

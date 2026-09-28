@@ -10,7 +10,17 @@ This wrapper adapts the feed-forward One2Scene scaffold as a SceneGenDeployBench
 - Native coordinates: `RDF`, with the primary panorama viewpoint at the origin
 - Scene scale: `1.0` until the TartanAir calibration run supplies the release default
 
-The wrapper converts the panorama to six 256 by 256 cube faces, runs the One2Scene scaffold encoder, rotates each Gaussian into the shared panorama frame, and exports Graphdeco opacity logits, log scales, normalized WXYZ quaternions, and spherical harmonics. It does not use the repository's `fused.ply`, which is an RGB point cloud rather than a 3DGS file.
+The wrapper converts the panorama to six cube faces, runs the One2Scene scaffold encoder, rotates each Gaussian into the shared panorama frame, and exports Graphdeco opacity logits, log scales, normalized WXYZ quaternions, and spherical harmonics. It does not use the repository's `fused.ply`, which is an RGB point cloud rather than a 3DGS file.
+
+`cube_size` defaults to `512`, matching the upstream demo's cubemap and camera resolution. Set it to `256` for a faster run that uses less GPU memory. These are the only supported values.
+
+```json
+{
+  "parameters": {
+    "cube_size": 512
+  }
+}
+```
 
 ## Model asset
 

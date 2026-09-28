@@ -2,7 +2,7 @@ catalog_version: 1
 
 runners:
   - runner: one2scene-scaffold
-    version: 0.1.0
+    version: 0.1.1
     latest: true
     display_name: One2Scene Scaffold
     kind: generator
@@ -12,7 +12,9 @@ runners:
         required_sample:
           required_datatype:
             - image
-    job_parameters: {}
+    job_parameters:
+      # The upstream demo uses 512. Set 256 for a faster, lower-memory run.
+      cube_size: 512
     scheduling:
       # The server starts a fresh child process for each job, which bounds model and CUDA state lifetime.
       max_batch_size: 10
@@ -23,7 +25,7 @@ runners:
     launcher:
       driver: docker
       compat_version: 1
-      image: ghcr.io/cashewhero/scenegendeploybench-one2scene:0.1.0
+      image: ghcr.io/cashewhero/scenegendeploybench-one2scene:0.1.1
       # One panorama does not benefit from upstream data-parallel DDP. Run one instance per GPU.
       gpus: 1
       endpoint:
