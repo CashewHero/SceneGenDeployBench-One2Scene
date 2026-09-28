@@ -1,82 +1,47 @@
-# Runner Wrapper
+# One2Scene scaffold runner
 
-`runner_wrapper/` turns a model repository into a SceneGenDeployBench runner image. It provides the HTTP server, job logging, resource measurements, Docker wiring, examples, and local test helper. A model repository normally only needs a model-specific `adapter.py` and runner catalog.
+This wrapper adapts the feed-forward One2Scene scaffold as a SceneGenDeployBench generator.
 
-The directory `runner_wrapper/` is self-contained so it can be copied or pulled as a subtree without the main repository.
+## Contract
 
-One runner catalog entry has one role:
+- Runner: `one2scene-scaffold`
+- Input: one full 2:1 equirectangular `image`
+- Output: one Graphdeco-compatible `3dgs` PLY with degree-4 spherical harmonics
+- Native coordinates: `RDF`, with the primary panorama viewpoint at the origin
+- Scene scale: `1.0` until the TartanAir calibration run supplies the release default
 
-- A generator turns dataset inputs into reusable generated files.
-- An evaluator consumes dataset data and/or files from a generator and reports metrics.
+The wrapper converts the panorama to six 256 by 256 cube faces, runs the One2Scene scaffold encoder, rotates each Gaussian into the shared panorama frame, and exports Graphdeco opacity logits, log scales, normalized WXYZ quaternions, and spherical harmonics. It does not use the repository's `fused.ply`, which is an RGB point cloud rather than a 3DGS file.
 
-## Add To A Model Repository
+## Model asset
 
-From the model repository root:
+The first job downloads `one2scene_scaffold.ckpt` from the public `mutou0308/One2Scene` Hugging Face dataset into `PATH_MODEL_CACHE/one2scene`. The wrapper pins dataset revision `46367f7dc0aecfc93fb3e104ebd5994ec5731b33` and verifies SHA-256 `f833ca03e84f30e21ebbbd374b9903af22bcfa73b6523581cf77af3f984c6c05`.
 
-```bash
-git remote add deploybench https://github.com/CashewHero/SceneGenDeployBench.git
-git fetch deploybench subtree/runner_wrapper
-git subtree add --prefix=runner_wrapper deploybench subtree/runner_wrapper --squash
-```
+Set `ONE2SCENE_CHECKPOINT` to use a preseeded checkpoint. The path must be visible inside the container. `HF_TOKEN` is optional.
 
-Pull later updates with:
+## Build and test
 
-```bash
-git fetch deploybench subtree/runner_wrapper
-git subtree pull --prefix=runner_wrapper deploybench subtree/runner_wrapper --squash
-```
-
-The main files are:
-
-```text
-runner_wrapper/
-  adapter.py       model-specific job implementation
-  files.py         compatible artifact publication
-  server.py        shared HTTP runner server
-  Dockerfile       runner image build
-  localtest.sh     local build and smoke helper
-  AGENTS.md        detailed adaptation contract
-  examples/        request, catalog, Docker, and workflow templates
-```
-
-Copy the matching catalog template to `runner_wrapper/config/runners/<runner>.yaml` and edit it for the model. To use the runner locally, copy that catalog into the active DeployBench runner-config directory.
-
-## Build And Test
-
-Build from the model repository root:
+From the repository root:
 
 ```bash
-docker build -f runner_wrapper/Dockerfile -t my-model-runner .
-```
-
-Or use the helper:
-
-```bash
+runner_wrapper/localtest.sh test
 runner_wrapper/localtest.sh build
 runner_wrapper/localtest.sh smoke
 ```
 
-The bundled test adapter waits by default. For a quick wrapper smoke test:
+The smoke command mounts `runner_wrapper/data` by default and copies `demo_case/panorama.png` into the smoke dataset. Override the data root with `RUNNER_DATA_DIR`.
 
-```bash
-TEST_RUNNER_MIN_SECONDS=0 TEST_RUNNER_MAX_SECONDS=0 \
-  runner_wrapper/localtest.sh smoke
-```
+The image supports CUDA compute capabilities 7.5, 8.0, 8.6, and 8.9 with PTX. A Turing attention fallback supports the local RTX 2080 Ti. Ampere and newer GPUs use PyTorch flash attention.
 
-## Data Flow
+## Multiple GPUs
 
-The orchestrator supplies the selected dataset data to a runner. An evaluator can also receive generated files and additional dataset viewpoints. Each runner reports reusable outputs or metrics back to the orchestrator.
+One panorama job uses one GPU. Upstream scaffold DDP distributes samples rather than splitting one model inference, so assigning multiple GPUs to one batch-size-one job duplicates work. On a multi-GPU host, run one runner instance per GPU so DeployBench can process jobs concurrently.
 
-The wire contract is defined in [Runner API](docs/api.md). Use the wrapper filesystem helpers to publish job files.
+The SEVA refinement stage is not part of this runner. It produces trajectory-conditioned frames rather than a reusable updated 3DGS and requires a separate runner contract.
 
-## Publish An Image
+## Catalog
 
-Create the image workflow from the included template:
+Copy `runner_wrapper/config/runners/one2scene.yaml` into the deployment's active runner configuration directory.
 
-```bash
-mkdir -p .github/workflows
-cp runner_wrapper/examples/github-workflows/build-runner-image.yaml \
-  .github/workflows/runner-image.yaml
-```
+## Licensing
 
-The target repository should be named `SceneGenDeployBench-<model>`. The workflow derives the GHCR image name from the repository name.
+The upstream repository has no root license file. Several scaffold source files identify themselves as CC BY-NC-SA 4.0 and non-commercial. Confirm that the intended deployment and image publication comply with the upstream code and checkpoint terms before publishing.

@@ -1,19 +1,11 @@
+"""One2Scene equirectangular panorama-to-3DGS runner adapter."""
+
 from __future__ import annotations
-
-"""Default adapter implementation.
-
-Replace this file or point RUNNER_ADAPTER at a different callable inside the
-model repository.
-"""
 
 import hashlib
 import json
-import logging
+import math
 import os
-import random
-import re
-import shutil
-import sys
 import time
 import traceback
 from pathlib import Path
@@ -22,286 +14,302 @@ from typing import Any
 from runner_wrapper.job_logging import tee_job_output
 from runner_wrapper.measurements import ResourceMonitor
 
-logger = logging.getLogger("runner_wrapper.adapter")
+
+MODEL_REPO_ID = "mutou0308/One2Scene"
+MODEL_REPO_TYPE = "dataset"
+MODEL_REVISION = "46367f7dc0aecfc93fb3e104ebd5994ec5731b33"
+CHECKPOINT_NAME = "one2scene_scaffold.ckpt"
+CHECKPOINT_SIZE = 2_003_484_732
+CHECKPOINT_SHA256 = "f833ca03e84f30e21ebbbd374b9903af22bcfa73b6523581cf77af3f984c6c05"
+OUTPUT_METADATA = {
+    # One2Scene's primary cube face uses camera axes X right, Y down, Z forward.
+    # The scale remains provisional until the TartanAir calibration run is complete.
+    "scene_scale": 1.0,
+    "scene_coordinate_system": "RDF",
+    "scene_units": "relative",
+    "scene_origin": "primary_viewpoint",
+}
 
 
-def event_message(event: str, **fields: object) -> str:
-    return json.dumps({"event": event, **fields}, sort_keys=True)
+def utc(timestamp: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(timestamp))
 
 
-def _safe_role(role: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in role)
-
-
-def _safe_name(value: Any, fallback: str) -> str:
-    name = re.sub(r"[^a-zA-Z0-9_.-]+", "-", str(value or "").strip()).strip("-._")
-    return name or fallback
-
-
-def _parameter_variant(parameters: Any) -> str:
-    if not isinstance(parameters, dict) or not parameters:
-        return "default"
-    encoded = json.dumps(
-        parameters,
-        sort_keys=True,
-        separators=(",", ":"),
-        allow_nan=False,
-    ).encode("utf-8")
-    digest = hashlib.sha256(encoded).hexdigest()[:10]
-    readable = "variant"
-    for _, value in sorted(parameters.items()):
-        if isinstance(value, bool):
-            value = str(value).lower()
-        if isinstance(value, (str, int, float)):
-            readable = _safe_name(value, "variant")[:24]
-            break
-    return f"{readable}-{digest}"
-
-
-def _normalize_inputs(raw_inputs: Any) -> dict[str, dict[str, dict[str, Any]]]:
-    if raw_inputs is None:
+def parameters(raw: object) -> dict[str, Any]:
+    if raw is None:
         return {}
+    if not isinstance(raw, dict):
+        raise ValueError("job.parameters must be an object")
+    if raw:
+        raise ValueError(f"unknown job parameters: {', '.join(sorted(map(str, raw)))}")
+    return {}
+
+
+def variant_key(params: dict[str, Any]) -> str:
+    encoded = json.dumps(params, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    return f"scaffold-{hashlib.sha256(encoded).hexdigest()[:10]}"
+
+
+def _normalized_inputs(raw_inputs: object) -> dict[str, dict[str, dict[str, Any]]]:
     if not isinstance(raw_inputs, dict):
         raise ValueError("inputs must be an object")
-
     normalized: dict[str, dict[str, dict[str, Any]]] = {}
     for raw_role, raw_samples in raw_inputs.items():
         role = str(raw_role).strip()
         if not role or not isinstance(raw_samples, dict):
             raise ValueError("each input role must contain a sample mapping")
         samples: dict[str, dict[str, Any]] = {}
-        for raw_sample_id, raw_sample_data in raw_samples.items():
-            sample_id = str(raw_sample_id).strip()
-            if not sample_id or not isinstance(raw_sample_data, dict):
+        for raw_sample, raw_data in raw_samples.items():
+            sample = str(raw_sample).strip()
+            if not sample or not isinstance(raw_data, dict):
                 raise ValueError(f"inputs.{role} must map sample ids to data mappings")
-            sample_data: dict[str, Any] = {}
-            for raw_data_type, value in raw_sample_data.items():
-                data_type = str(raw_data_type).strip()
-                if not data_type:
-                    raise ValueError(f"inputs.{role}.{sample_id} contains an empty data type")
-                sample_data[data_type] = value.strip() if isinstance(value, str) else value
-            if sample_data:
-                samples[sample_id] = sample_data
-        if samples:
-            normalized[role] = samples
+            samples[sample] = {
+                str(data_type).strip(): value.strip() if isinstance(value, str) else value
+                for data_type, value in raw_data.items()
+                if str(data_type).strip()
+            }
+        normalized[role] = samples
     return normalized
 
 
-def _copy_inputs(
-    samples: dict[str, dict[str, Any]],
-    workspace_root: Path,
-    variant: str,
-) -> tuple[dict[str, dict[str, str]], int]:
-    output_files: dict[str, dict[str, str]] = {}
-    copied = 0
-    for sample_index, (sample_id, sample_data) in enumerate(samples.items()):
-        sample_outputs: dict[str, str] = {}
-        for data_index, (data_type, raw_path) in enumerate(sample_data.items()):
-            if not isinstance(raw_path, str):
-                continue
-            src_path = Path(raw_path)
-            if not src_path.exists() or not src_path.is_file():
-                raise FileNotFoundError(f"input file not found: {src_path}")
-            dst_name = (
-                f"input-{sample_index:02d}-{data_index:02d}-"
-                f"{_safe_role(sample_id)}-{_safe_role(data_type)}-"
-                f"{variant}{src_path.suffix}"
-            )
-            dst_path = workspace_root / dst_name
-            shutil.copyfile(src_path, dst_path)
-            sample_outputs[data_type] = str(dst_path.relative_to(workspace_root))
-            copied += 1
-        if sample_outputs:
-            output_files[sample_id] = sample_outputs
-    return output_files, copied
-
-
-def _sleep_range_seconds() -> int:
-    min_seconds = int(os.getenv("TEST_RUNNER_MIN_SECONDS", "360"))
-    max_seconds = int(os.getenv("TEST_RUNNER_MAX_SECONDS", "720"))
-    if min_seconds < 0 or max_seconds < min_seconds:
-        raise ValueError("invalid TEST_RUNNER_MIN_SECONDS / TEST_RUNNER_MAX_SECONDS")
-    return random.randint(min_seconds, max_seconds)
-
-
-def _write_metrics_file(metrics_path: Path, summary: dict[str, Any]) -> None:
-    with metrics_path.open("w", encoding="utf-8") as handle:
-        json.dump(summary, handle, indent=2)
-        handle.write("\n")
-
-
-def _is_evaluator_mode() -> bool:
-    runner_type = os.getenv("RUNNER_TYPE", "generator").strip().lower()
-    mode = os.getenv("TEST_RUNNER_MODE", "").strip().lower()
-    return runner_type == "evaluator" or mode == "evaluator"
-
-
-def _random_evaluation_metrics() -> list[dict[str, Any]]:
-    return [
-        {
-            "namespace": "quality",
-            "name": "test_quality_score",
-            "type": "float",
-            "value": round(random.uniform(0.0, 1.0), 6),
-            "unit": "score",
-            "source": "evaluator",
-        },
-        {
-            "namespace": "quality",
-            "name": "test_geometry_error",
-            "type": "float",
-            "value": round(random.uniform(0.0, 0.25), 6),
-            "unit": "normalized_error",
-            "source": "evaluator",
-        },
-    ]
-
-
-def run_job(job_request: dict[str, Any]) -> dict[str, Any]:
-    started_at = time.time()
-    runtime = job_request["runtime"]
-    workspace_root = Path(runtime["workspace_dir"])
-    workspace_root.mkdir(parents=True, exist_ok=True)
-    parameters = job_request.get("job", {}).get("parameters") or {}
-    variant = _parameter_variant(parameters)
-    log_path = workspace_root / f"runner-{variant}.log"
-    with tee_job_output(log_path):
-        return _run_job_logged(
-            job_request,
-            started_at,
-            workspace_root,
-            log_path,
-            variant,
+def _validate_panorama_metadata(job: dict[str, Any]) -> None:
+    metadata = job.get("primary_sample_metadata") or {}
+    if not isinstance(metadata, dict):
+        raise ValueError("job.primary_sample_metadata must be an object")
+    projection = str(metadata.get("projection") or "equirectangular").strip().lower()
+    if projection != "equirectangular":
+        raise ValueError(
+            "primary_sample_metadata.projection must be equirectangular; "
+            f"received {projection!r}"
         )
+    fov = metadata.get("fov")
+    if fov is not None:
+        if (
+            not isinstance(fov, (list, tuple))
+            or len(fov) != 2
+            or any(type(value) not in (int, float) for value in fov)
+            or not math.isclose(float(fov[0]), 360.0, abs_tol=1e-3)
+            or not math.isclose(float(fov[1]), 180.0, abs_tol=1e-3)
+        ):
+            raise ValueError("One2Scene requires a full 360 by 180 degree panorama")
 
 
-def _run_job_logged(
-    job_request: dict[str, Any],
-    started_at: float,
-    workspace_root: Path,
-    log_path: Path,
-    variant: str,
-) -> dict[str, Any]:
-    monitor: ResourceMonitor | None = None
+def prepare_image(request: dict[str, Any], destination: Path) -> tuple[str, Path, tuple[int, int]]:
+    from PIL import Image, UnidentifiedImageError
 
+    job = request.get("job")
+    if not isinstance(job, dict):
+        raise ValueError("job must be an object")
+    if job.get("job_type") not in ("generation", "generator"):
+        raise ValueError("One2Scene scaffold accepts generation jobs only")
+    primary = str(job.get("primary_sample") or "").strip()
+    if not primary:
+        raise ValueError("job.primary_sample is required")
+
+    inputs = _normalized_inputs(request.get("inputs"))
+    samples = inputs.get("data", {})
+    if set(samples) != {primary}:
+        raise ValueError("One2Scene requires exactly one primary sample in inputs.data")
+    if inputs.get("candidate") or inputs.get("references"):
+        raise ValueError("One2Scene scaffold does not consume candidate or reference inputs")
+    image_value = samples[primary].get("image")
+    if not isinstance(image_value, str) or not image_value:
+        raise ValueError(f"inputs.data.{primary}.image must be a file path")
+    source = Path(image_value)
+    if not source.is_file():
+        raise FileNotFoundError(f"input image not found: {source}")
+
+    _validate_panorama_metadata(job)
     try:
-        job = job_request["job"]
-        runtime = job_request["runtime"]
-        inputs = _normalize_inputs(job_request.get("inputs"))
-        data_samples = inputs.get("data", {})
-        monitor_data = {
-            f"{role}.{sample_id}.{data_type}": value
-            for role, samples in inputs.items()
-            for sample_id, sample_data in samples.items()
-            for data_type, value in sample_data.items()
-        }
-        monitor = ResourceMonitor(sample_data=monitor_data, output_dir=workspace_root)
-        monitor.start()
-        logger.info(
-            event_message(
-                "adapter_run_started",
-                job_id=job["job_id"],
-                batch_id=job.get("batch_id"),
-                workspace_dir=runtime["workspace_dir"],
-                input_roles=sorted(inputs),
+        with Image.open(source) as image:
+            image.load()
+            width, height = image.size
+            if width != 2 * height:
+                raise ValueError(
+                    "One2Scene requires a 2:1 equirectangular image; "
+                    f"received {width}x{height}"
+                )
+            if width < 128 or height < 64:
+                raise ValueError("input panorama must be at least 128 by 64 pixels")
+            image.convert("RGB").save(destination, format="PNG")
+    except UnidentifiedImageError as exc:
+        raise ValueError(f"input image is not readable: {source}") from exc
+    return primary, source, (width, height)
+
+
+def configure_model_cache() -> Path:
+    cache_root = Path(os.getenv("PATH_MODEL_CACHE", "/data/model_cache")) / "one2scene"
+    cache_root.mkdir(parents=True, exist_ok=True)
+    for name, relative in {
+        "HF_HOME": "huggingface",
+        "TORCH_HOME": "torch",
+        "XDG_CACHE_HOME": "xdg",
+    }.items():
+        path = cache_root / relative
+        path.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault(name, str(path))
+    return cache_root
+
+
+def _verify_checkpoint(path: Path, marker_dir: Path) -> None:
+    size = path.stat().st_size
+    if size != CHECKPOINT_SIZE:
+        raise ValueError(f"checkpoint size mismatch for {path}: expected {CHECKPOINT_SIZE}, got {size}")
+    marker_dir.mkdir(parents=True, exist_ok=True)
+    marker = marker_dir / f"{CHECKPOINT_SHA256}.verified"
+    marker_value = f"{path.resolve()}\n{CHECKPOINT_SIZE}\n"
+    if marker.is_file() and marker.read_text(encoding="utf-8") == marker_value:
+        return
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != CHECKPOINT_SHA256:
+        raise ValueError(f"checkpoint SHA-256 mismatch for {path}")
+    temporary = marker.with_suffix(f".{os.getpid()}.tmp")
+    temporary.write_text(marker_value, encoding="utf-8")
+    os.replace(temporary, marker)
+
+
+def ensure_checkpoint(cache_root: Path) -> Path:
+    override = os.getenv("ONE2SCENE_CHECKPOINT", "").strip()
+    if override:
+        checkpoint = Path(override)
+        if not checkpoint.is_file():
+            raise FileNotFoundError(f"ONE2SCENE_CHECKPOINT not found: {checkpoint}")
+    else:
+        from huggingface_hub import hf_hub_download
+
+        checkpoint = Path(
+            hf_hub_download(
+                repo_id=MODEL_REPO_ID,
+                repo_type=MODEL_REPO_TYPE,
+                filename=CHECKPOINT_NAME,
+                revision=MODEL_REVISION,
+                cache_dir=cache_root / "huggingface",
+                token=os.getenv("HF_TOKEN") or None,
             )
         )
+    _verify_checkpoint(checkpoint, cache_root / "verified")
+    return checkpoint
 
-        metrics_path = workspace_root / f"metrics-{variant}.json"
-        print(f"test runner job {job['job_id']} started", flush=True)
 
-        sleep_seconds = _sleep_range_seconds()
-        logger.info(event_message("adapter_sleeping", job_id=job["job_id"], sleep_seconds=sleep_seconds))
-        print(f"test runner sleeping for {sleep_seconds} seconds", flush=True)
+def _write_report(path: Path, report: dict[str, Any]) -> None:
+    path.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
 
-        time.sleep(sleep_seconds)
-        evaluator_mode = _is_evaluator_mode()
-        output_files: dict[str, dict[str, str]] = {}
-        copied_input_count = 0
-        if not evaluator_mode:
-            print("test runner copying data inputs", flush=True)
-            output_files, copied_input_count = _copy_inputs(
-                data_samples,
-                workspace_root,
-                variant,
-            )
-        logger.info(
-            event_message(
-                "adapter_inputs_copied",
-                job_id=job["job_id"],
-                copied_input_count=copied_input_count,
-            )
-        )
 
-        evaluation_metrics = _random_evaluation_metrics() if evaluator_mode else []
+def run_job(request: dict[str, Any]) -> dict[str, Any]:
+    started = time.time()
+    runtime = request.get("runtime")
+    if not isinstance(runtime, dict) or not runtime.get("workspace_dir"):
+        raise ValueError("runtime.workspace_dir is required")
+    workspace = Path(runtime["workspace_dir"])
+    workspace.mkdir(parents=True, exist_ok=True)
+    fallback = hashlib.sha256(str(request.get("job", {}).get("job_id", "job")).encode()).hexdigest()[:10]
+    try:
+        params = parameters(request.get("job", {}).get("parameters"))
+        variant = variant_key(params)
+    except (AttributeError, TypeError, ValueError):
+        variant = f"invalid-{fallback}"
 
-        resource_metrics = monitor.stop()
-        monitor = None
-        metrics = resource_metrics + evaluation_metrics
-        completed_at = time.time()
-        wall_time_ms = round((completed_at - started_at) * 1000, 3)
-        print(f"test runner copied {copied_input_count} output files", flush=True)
-        print(f"test runner completed in {wall_time_ms} ms", flush=True)
-        report: dict[str, Any] = {"inputs": inputs}
-        if output_files:
-            report["output_files"] = output_files
-        if job.get("parameters"):
-            report["parameters"] = dict(job["parameters"])
-        if evaluation_metrics:
-            report["metrics"] = evaluation_metrics
-        if resource_metrics:
-            report["resource_metrics"] = resource_metrics
-        _write_metrics_file(metrics_path, report)
+    log_path = workspace / f"runner-{variant}.log"
+    report_path = workspace / f"metrics-{variant}.json"
+    stage = "validation"
+    monitor: ResourceMonitor | None = None
+    metrics: list[dict[str, Any]] = []
+    report: dict[str, Any] = {"inputs": request.get("inputs", {})}
 
-        logger.info(
-            event_message(
-                "adapter_run_completed",
-                job_id=job["job_id"],
-                wall_time_ms=wall_time_ms,
-                copied_input_count=copied_input_count,
-            )
-        )
+    with tee_job_output(log_path):
+        try:
+            job = request["job"]
+            params = parameters(job.get("parameters"))
+            report["parameters"] = params
+            prepared = workspace / "input-panorama.png"
+            primary, source, resolution = prepare_image(request, prepared)
+            monitor = ResourceMonitor(sample_data={"data.image": str(source)}, output_dir=workspace)
+            monitor.start()
 
-        result = {
-            "status": "completed",
-            "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
-            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(completed_at)),
-            "metrics": metrics,
-            "artifacts": [
+            stage = "model_assets"
+            cache_root = configure_model_cache()
+            checkpoint = ensure_checkpoint(cache_root)
+            print(f"One2Scene checkpoint: {checkpoint}", flush=True)
+
+            stage = "model_inference"
+            from runner_wrapper.one2scene_model import run_scaffold
+
+            splats = run_scaffold(prepared, checkpoint)
+
+            stage = "export"
+            from runner_wrapper.graphdeco import write_graphdeco_ply
+
+            output_name = f"3DGS-{variant}.ply"
+            gaussian_count, sh_degree = write_graphdeco_ply(splats, workspace / output_name)
+            output_files = {primary: {"3dgs": output_name}}
+            output_metadata = dict(OUTPUT_METADATA)
+            model_metrics = [
                 {
-                    "artifact_type": "job_log",
-                    "path": log_path.name,
+                    "namespace": "model",
+                    "name": "gaussian_count",
+                    "type": "integer",
+                    "value": gaussian_count,
+                    "unit": "gaussians",
+                    "source": "model",
                 },
                 {
-                    "artifact_type": "metric_summary",
-                    "path": metrics_path.name,
+                    "namespace": "model",
+                    "name": "spherical_harmonic_degree",
+                    "type": "integer",
+                    "value": sh_degree,
+                    "unit": "degree",
+                    "source": "model",
                 },
-            ],
-            "failure": None,
-        }
-        if output_files:
-            result["output_files"] = output_files
-        return result
-    except Exception as exc:
-        resource_metrics = monitor.stop() if monitor is not None else []
-        completed_at = time.time()
-        print(f"test runner job failed: {exc}", file=sys.stderr, flush=True)
-        traceback.print_exc()
-        return {
-            "status": "failed",
-            "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started_at)),
-            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(completed_at)),
-            "metrics": resource_metrics,
-            "artifacts": [
                 {
-                    "artifact_type": "job_log",
-                    "path": log_path.name,
-                }
-            ],
-            "failure": {
-                "code": "TEST_RUNNER_FAILED",
-                "message": f"Test runner failed; see {log_path.name}",
-                "retryable": False,
-                "stage": "adapter",
-            },
-        }
+                    "namespace": "model",
+                    "name": "checkpoint_revision",
+                    "type": "string",
+                    "value": MODEL_REVISION,
+                    "source": "model",
+                },
+            ]
+            report.update(
+                input_resolution=list(resolution),
+                output_files=output_files,
+                output_metadata=output_metadata,
+                model_metrics=model_metrics,
+            )
+            result: dict[str, Any] = {
+                "status": "completed",
+                "output_files": output_files,
+                "output_metadata": output_metadata,
+                "failure": None,
+            }
+        except Exception as exc:
+            traceback.print_exc()
+            retryable = stage == "model_assets" and isinstance(exc, (ConnectionError, OSError, TimeoutError))
+            failure = {
+                "code": "ONE2SCENE_FAILED",
+                "message": f"{stage}: {exc}",
+                "retryable": retryable,
+                "stage": stage,
+            }
+            report["failure"] = failure
+            result = {"status": "failed", "failure": failure}
+        finally:
+            if monitor is not None:
+                metrics = monitor.stop()
+
+        model_metrics = report.get("model_metrics", [])
+        result_metrics = [*metrics, *model_metrics]
+        report["resource_metrics"] = metrics
+        _write_report(report_path, report)
+
+    result.update(
+        started_at=utc(started),
+        completed_at=utc(time.time()),
+        metrics=result_metrics,
+        artifacts=[
+            {"artifact_type": "job_log", "path": log_path.name},
+            {"artifact_type": "metric_summary", "path": report_path.name},
+        ],
+    )
+    return result

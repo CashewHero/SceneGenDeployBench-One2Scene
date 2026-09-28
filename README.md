@@ -224,5 +224,9 @@ After execution, you can view the generated frames and video in the demo_outputs
 ## Contact
 Please send emails to pengfei.wang@connect.polyu.hk if there is any question
 
+## SceneGenDeployBench runner
+
+`runner_wrapper/` provides the `one2scene-scaffold` generator. It accepts one full equirectangular panorama and outputs a reusable Graphdeco 3DGS PLY. See [runner_wrapper/README.md](runner_wrapper/README.md) for the contract, model cache, build, and test instructions.
+
 ## Acknowledgements
 We would like to thank the contributors to the [NoPoSplat](https://github.com/cvg/NoPoSplat), [HunyuanWorld-1.0](https://github.com/Tencent-Hunyuan/HunyuanWorld-1.0), [SEVA](https://github.com/Stability-AI/stable-virtual-camera) repositories, for their open research.
