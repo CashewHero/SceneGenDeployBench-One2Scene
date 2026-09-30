@@ -62,53 +62,16 @@ def _camera(fov_degrees: float, theta_degrees: float, phi_degrees: float, size: 
     return intrinsic, camera_to_world
 
 
-def _sample_equirectangular(image: Any, xyz: Any) -> Any:
-    import numpy as np
-    from scipy.ndimage import map_coordinates
-
-    height, width = image.shape[:2]
-    x, y, z = np.split(xyz, 3, axis=-1)
-    longitude = np.arctan2(x, z)
-    latitude = np.arctan2(y, np.sqrt(x * x + z * z))
-    coordinate_x = (longitude / (2.0 * np.pi) + 0.5) * width - 0.5
-    coordinate_y = (-latitude / np.pi + 0.5) * height - 0.5
-    result = np.empty((*xyz.shape[:-1], 3), dtype=np.float32)
-    for channel in range(3):
-        result[..., channel] = map_coordinates(
-            image[..., channel],
-            [coordinate_y[..., 0], coordinate_x[..., 0]],
-            order=1,
-            mode="wrap",
-        )
-    return result
-
-
 def panorama_to_cube_faces(image_path: Path, size: int = DEFAULT_CUBE_SIZE) -> Any:
+    _install_upstream_package_shells()
     import numpy as np
     from PIL import Image
+    from src.dataset.utills import e2c
 
     with Image.open(image_path) as source:
-        panorama = np.asarray(source.convert("RGB"), dtype=np.float32) / 255.0
-
-    coordinates = np.linspace(-0.5, 0.5, num=size, dtype=np.float32)
-    grid_x, grid_y = np.meshgrid(coordinates, -coordinates)
-    faces_xyz = []
-    for face in range(CUBE_FACE_COUNT):
-        xyz = np.zeros((size, size, 3), dtype=np.float32)
-        if face == 0:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = grid_x, grid_y, 0.5
-        elif face == 1:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = 0.5, grid_y, grid_x
-        elif face == 2:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = grid_x, grid_y, -0.5
-        elif face == 3:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = -0.5, grid_y, grid_x
-        elif face == 4:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = grid_x, 0.5, grid_y
-        else:
-            xyz[..., 0], xyz[..., 1], xyz[..., 2] = grid_x, -0.5, grid_y
-        faces_xyz.append(xyz)
-    return np.stack([_sample_equirectangular(panorama, xyz) for xyz in faces_xyz])
+        panorama = np.asarray(source.convert("RGB")).copy()
+    faces, _ = e2c(panorama, face_w=size, mode="bilinear")
+    return np.asarray(faces, dtype=np.float32) / 255.0
 
 
 def _model_config() -> Any:
