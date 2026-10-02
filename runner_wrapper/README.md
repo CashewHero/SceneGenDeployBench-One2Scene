@@ -8,7 +8,7 @@ This wrapper adapts the feed-forward One2Scene scaffold as a SceneGenDeployBench
 - Input: one full 2:1 equirectangular `image`
 - Output: one Graphdeco-compatible `3dgs` PLY with degree-4 spherical harmonics
 - Native coordinates: `RDF`, with the primary panorama viewpoint at the origin
-- Scene scale: `1.0` until the TartanAir calibration run supplies the release default
+- Scene scale: `0.53`, the median from the 100-trajectory TartanAir panorama depth calibration
 
 The wrapper uses One2Scene's active `src.dataset.utills.e2c` projection to convert the panorama to six cube faces, runs the scaffold encoder, rotates each Gaussian into the shared panorama frame, and exports Graphdeco opacity logits, log scales, normalized WXYZ quaternions, and spherical harmonics. It does not use the repository's `fused.ply`, which is an RGB point cloud rather than a 3DGS file.
 

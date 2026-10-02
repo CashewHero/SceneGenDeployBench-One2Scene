@@ -25,8 +25,8 @@ DEFAULT_CUBE_SIZE = 512
 SUPPORTED_CUBE_SIZES = (256, 512)
 OUTPUT_METADATA = {
     # One2Scene's primary cube face uses camera axes X right, Y down, Z forward.
-    # The scale remains provisional until the TartanAir calibration run is complete.
-    "scene_scale": 1.0,
+    # Median from the 100-trajectory TartanAir panorama depth calibration.
+    "scene_scale": 0.53,
     "scene_coordinate_system": "RDF",
     "scene_units": "relative",
     "scene_origin": "primary_viewpoint",

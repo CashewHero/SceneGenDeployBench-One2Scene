@@ -2,7 +2,7 @@ catalog_version: 1
 
 runners:
   - runner: one2scene-scaffold
-    version: 0.1.2
+    version: 0.1.3
     latest: true
     display_name: One2Scene Scaffold
     kind: generator
@@ -25,7 +25,7 @@ runners:
     launcher:
       driver: docker
       compat_version: 1
-      image: ghcr.io/cashewhero/scenegendeploybench-one2scene:0.1.2
+      image: ghcr.io/cashewhero/scenegendeploybench-one2scene:0.1.3
       # One panorama does not benefit from upstream data-parallel DDP. Run one instance per GPU.
       gpus: 1
       endpoint:

@@ -104,6 +104,7 @@ class One2SceneAdapterTests(unittest.TestCase):
                 {"sample-1": {"3dgs": f"3DGS-{variant}.ply"}},
             )
             self.assertEqual(result["output_metadata"], adapter.OUTPUT_METADATA)
+            self.assertEqual(result["output_metadata"]["scene_scale"], 0.53)
             self.assertTrue((workspace / f"3DGS-{variant}.ply").is_file())
             report_path = workspace / f"metrics-{variant}.json"
             report = json.loads(report_path.read_text(encoding="utf-8"))
